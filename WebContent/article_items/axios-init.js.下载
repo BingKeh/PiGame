@@ -1,0 +1,47 @@
+var axiosInit = function() {
+  axios.defaults.baseURL = window.configJson.baseURL;
+  if (localStorage.getItem('token')) {
+    axios.defaults.headers.common['Authorization'] = 'Bearer ' + localStorage.getItem('token');
+  }
+  axios.defaults.headers.post['Content-Type'] = 'application/json; charset=utf-8';
+  axios.defaults.headers.put['Content-Type'] = 'application/json; charset=utf-8';
+  axios.interceptors.request.use(function(config) {
+    if (config.method === 'post' || config.method === 'put') {
+      if (config.data) {
+        if (!(config.data instanceof Array) && config.data.toString() === '[object Object]') {
+          var fd = {};
+          for (var item in config.data) {
+            fd[item] = (config.data[item] === 'true' || config.data[item] === 'false') ? Boolean(config.data[item]) : config.data[item];
+          }
+          config.data = fd;
+        } else if (config.data.toString() === '[object FormData]') {
+          var fd = {};
+          config.data.forEach(function(val, key) {
+            if (key) {
+              fd[key] = (val === 'true' || val === 'false') ? Boolean(val) : val;
+            }
+          });
+          config.data = fd;
+        }
+      }
+    }
+    config.validateStatus = function(status) {
+      return status >= 200 && status <= 502;
+    };
+    return config;
+  });
+  axios.interceptors.response.use(function(response) {
+    if (response.config.method === 'get' && response.status === 404) {
+      // alert('资源不存在！');
+      // history.back();
+      window.location.href = 'https://sspai.com/whoops';
+    }
+    return response;
+  }, function(error) {
+    return Promise.reject(error);
+  });
+  return axios;
+}
+
+
+Vue.prototype.$http = axiosInit();

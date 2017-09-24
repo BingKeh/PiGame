@@ -1,0 +1,250 @@
+;
+(function($) {
+  if (typeof $ === 'undefined') {
+    console.error('在使用插件之前，先引用jQuery，否则无法使用！');
+    return;
+  }
+
+  if (!window.API_HOST) {
+    window.API_HOST = 'https://sspai.com/api/v1';
+  }
+
+  // 动态加载css文件
+  function loadStyles(url) {
+      var link = document.createElement("link");
+      link.type = "text/css";
+      link.rel = "stylesheet";
+      link.href = url;
+      document.getElementsByTagName("head")[0].appendChild(link);
+  }
+  // loadStyles('/public/ss_extend_style.css')
+  // loadStyles('/public/ss_article_style.css')
+
+  function cutText(text, limit) {
+    if (typeof limit !== 'number') {
+      limit = 30;
+    }
+    if (text && text.length > limit) {
+      var newText = text.substring(0, limit - 1) + '...';
+      return newText;
+    } else {
+      return text;
+    }
+  }
+
+  function buildDownloadButton(platforms) {
+    var $dropdownMenu = $('<ul class="ss-dropdown-menu"></ul>');
+    for (var i = 0; i < platforms.length; i++) {
+      var platform = platforms[i];
+      var $link = $('<a/>');
+      $link.attr('target', '_blank');
+      // $link.attr('href', platform.url);
+      // $link.attr('href', 'https://sspai.com/d/' + platform.id);
+      if (platform.custom_url) {
+        $link.attr('href', platform.custom_url);
+      } else {
+        if (platform.url.indexOf('?') >= 0) {
+          if (platform.url.indexOf('itunes') >= 0) {
+            $link.attr('href', platform.url + '&uo=4&at=10lJSw&ct=appcards');
+          } else {
+            $link.attr('href', platform.url + '&uo=4&ct=appcards');
+          }
+        } else {
+          if (platform.url.indexOf('itunes') >= 0) {
+            $link.attr('href', platform.url + '?mt=8&uo=4&at=10lJSw&ct=appcards');
+          } else {
+            $link.attr('href', platform.url + '?mt=8&uo=4&ct=appcards');
+          }
+        }
+      }
+      $link.click(function(){
+        $.ajax({
+          type:"POST",
+          url:"https://sspai.com/api/v1/application/count/update",
+          data:JSON.stringify({"id":parseInt(platform.id)}),
+          dataType:"json",
+          headers:{
+            Accept:"application/json",
+            "Content-type":"application/json"
+          },
+          success:function(d){
+            return false;
+          }
+        });       
+      });
+      switch (platform.type) {
+        case 'iPhone':
+          $link.text('iPhone');
+          break;
+        case 'iPad':
+          $link.text('iPad');
+          break;
+        case 'iOS':
+          $link.text('iOS 通用');
+          break;
+        case 'Mac':
+          $link.text('Mac');
+          break;
+        case 'Android':
+          $link.text(platform.store);
+          break;
+        case 'Windows':
+        case 'Windows Phone':
+          $link.text('Windows');
+          break;
+      }
+      var $item = $('<li/>');
+      $dropdownMenu.append($item.append($link));
+    }
+    var $dropdown = $('<div class="ss-dropdown"></div>');
+    var $dropdownToggle = $('<a class="ss-dropdown-toggle">下载</a>');
+    $dropdownToggle.append('<i class="caret"></i>');
+    $dropdown.append($dropdownToggle);
+    $dropdown.append($dropdownMenu);
+    return $dropdown;
+  }
+
+  /**
+   * 解析应用卡片
+   * @param  {[type]} $app [description]
+   * @return {[type]}      [description]
+   */
+  function formatApp($app) {
+    $app.attr('contenteditable', 'false');
+    $app.addClass('ss-loading');
+    var id = $app.attr('app-id');
+    $.get(window.API_HOST + '/applications/' + id)
+      .then(function(data) {
+        if ($app.hasClass('ss-app-card')) {
+          return;
+        }
+        // insert Card
+        $app.removeAttr('app-id').removeClass('ss-loading').addClass('ss-app-card');
+        var $icon = $('<img class="ss-icon" src="https://cdn.sspai.com/' + data.icon + '" alt="" />');
+        var $title = $('<h4>' + cutText(data.title) + '</h4>');
+        var $rating = $('<div class="app-rating"></div>');
+        if (data.star) {
+          data.star = data.star/2;
+          $rating.append('<div class="rating-' + data.star.toString().replace('.', '-') + ' important"></div>');
+          $title.append($rating);
+        }
+        var $platform = $('<p>' + data.apps_at_platform[0].type + '</p>');
+        var $button = $('<a class="download" target="_blank" href="https://sspai.com' + data.apps_at_platform[0].url + '">下载<i class="caret"></i></a>');
+        var $link = $('<a class="more" href="https://sspai.com/app/' + data.title + '" target="_blank">相关文章</a>');
+
+        var $left = $('<div class="ss-left"></div>').append($icon);
+        var $right = $('<div class="ss-right"></div>').append($title).append($platform).append($link).append(buildDownloadButton(data.apps_at_platform));
+
+        $app.append($left).append($right);
+        $app.on('click', '.ss-dropdown-toggle', function(){
+          $app.find('.ss-dropdown').toggleClass('open');
+        });
+      });
+
+  }
+
+  /**
+   * 解析自定义卡片
+   * @param  {[type]} $card [description]
+   * @return {[type]}       [description]
+   */
+  function formatCustomLink($card) {
+    $card.attr('contenteditable', 'false');
+    $card.addClass('ss-loading');
+    var link = $card.attr('custom-link');
+    $.get(window.API_HOST + '/urls/' + link)
+      .done(function(data) {
+        if ($card.hasClass('ss-article-card')) {
+          return;
+        }
+        $card.removeAttr('custom-link').removeClass('ss-loading').addClass('ss-article-card');
+        var $thumbnail = $('<img class="thumbnail" src="' + data.thumbnail + '" alt="" />');
+        var $title = $('<h4>' + cutText(data.title) + '</h4>');
+        var $content = $('<p class="description">' + cutText(data.description, 56) + '</p>');
+        var $link = $('<a class="article-source" href="' + decodeURIComponent(link) + '" target="_blank">查看原文</a>');
+        var $left = $('<div class="left"></div>').append($thumbnail);
+        var $right = $('<div class="right"></div>').append($title).append($content).append($link);
+        // if (data.thumbnail) {
+        //   $card.append($left).append($right);
+        // } else {
+        //   $card.append($right);
+        // }
+        $card.append($right);
+        $card.on('click', function(e) {
+          e.preventDefault();
+          window.open(decodeURIComponent(link));
+        })
+      });
+  }
+
+  function tbCustomAppFormat() {
+    var apps = $(document).find('.tb-custom');
+    if (apps.length === 0) {
+      return;
+    }
+    for (var i = 0; i < apps.length; i++) {
+      var $app = $(apps[i]);
+      var isMobile = 'ontouchstart' in window;
+      if (isMobile) {
+        $app.find('.btn-pc').hide();
+      } else {
+        $app.find('.btn-mobile').hide();
+      }
+    }
+  }
+
+  /**
+   * 查找app
+   * @return {[type]} [description]
+   */
+  function searchApp() {
+    var apps = $(document).find('[app-id]');
+    for (var i = 0; i < apps.length; i++) {
+      var $app = $(apps[i]);
+      formatApp($app);
+    }
+  }
+
+  /**
+   * 查找自定义链接
+   * @return {[type]} [description]
+   */
+  function searchCustomLink() {
+    var customLinks = $(document).find('[custom-link]');
+    for (var i = 0; i < customLinks.length; i++) {
+      var $link = $(customLinks[i]);
+      formatCustomLink($link);
+    }
+  }
+
+  /**
+   * 隐藏图注
+   * @return {[type]} [description]
+   */
+  function hideCaption() {
+    var $captions = $(document).find('.ss-image-caption');
+    for (var i = 0; i < $captions.length; i++) {
+      var $caption = $($captions[i]);
+      if ($caption.text() === '请输入图片标题') {
+        $caption.hide();
+        $caption.text('');
+      } else {
+        $caption.prev('img').attr('alt', $caption.text());
+      }
+    }
+  }
+
+  $(document).on('formatDocument', function (){
+    setTimeout(function(){
+      hideCaption();
+    });
+    setTimeout(function(){
+      searchApp();
+      // tbCustomAppFormat();
+    });
+    setTimeout(function(){
+      searchCustomLink();
+    });
+  });
+
+})(jQuery);

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link href="style.css" type="text/css" rel="stylesheet">
+    <link href="css\font-awesome.min.css" type="text/css" rel="stylesheet">
+    <script type="text/javascript" src="js/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript" src="js/qrcode.js"></script>
+    <script type="text/javascript" src="js/vendor/jquery.ui.widget.js"></script>
+    <script type="text/javascript" src="js/jquery.iframe-transport.js"></script>
+    <script type="text/javascript" src="js/jquery.fileupload.js"></script>
+    <script type="text/javascript" src="js/json2.js"></script>
+    <script type="text/javascript" src="js/squire.js"></script>
+    <script type="text/javascript" src="js/my.js"></script>
+
+    <title>投稿</title>
+</head>
+
+<body class="space_body submit_body">
+
+    <header>
+        <nav>
+            <div class="div_blur_mask">
+                <div class="nav_mask"></div>
+                <div class="nav_blur" id="login_nav"></div>
+            </div>
+
+            <div class="div_father">
+
+                <div class="nav_div space_nav">
+                    <div class="nav_left">
+                        <ul>
+                            <li><a href="index">🐷&nbsp;&nbsp;&nbsp;主站</a></a>
+                            </li>
+                            <li><a href="lol.jsp">游戏</a></li>
+                            <li><a href="article.jsp">文章</a></li>
+                            <li><a href="#">讨论</a></li>
+                            <li><a href="#">视频</a></li>
+                        </ul>
+                    </div>
+                    <div class="nav_right" id="myspace_nav">
+                        <ul>
+                            <li><a href="do_login?action=logout">退出登录</a>
+                                <li>
+                                    <a href="submit">
+                                        <div class="admin_img">投稿</div>
+                                    </a>
+                                </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+
+    </header>
+    <article>
+        <div class="submit_article">
+            <div class="submit_btn_div">
+                <div class="submit_big_btn">
+                    <input id="fileupload" type="file" name="files[]" data-url="upload" accept="video/mp4" multiple onclick="do_upload()" />
+                    <span>投稿视频</span>
+                </div>
+
+
+                <div class="white_space_div"></div>
+                <a href="#textarea" onclick="$('.mytextarea').css('visibility', 'visible')">
+                    <div class="submit_big_btn"><span>投稿文章</span>
+                    </div>
+                </a>
+            </div>
+
+            <div class="div_tip">拖拽视频到此处也可以上传</div>
+            <div class="progress_div">
+                <div class='progress_mask'></div>
+            </div>
+            <div class="complete_upload">上传已完成，将在<span class="sec">3</span>秒后返回！</div>
+            <div class="submit_divider">
+                <div class="div_submit_tip">投稿即代表您已同意
+                    <font>PiGame服务协议与规定</font>
+                </div>
+            </div>
+        </div>
+
+        <!-- <div class="richtext" id="richtextEditor"></div>
+        <script type="text/javascript">
+            var node = document.getElementById('richtextEditor');
+            editor = new Squire(node);
+        </script> -->
+        <div class="mytextarea">
+            <div class="richtext_tool">
+                <div class="menu">
+                    <div class="group">
+                        <div class="item" data-action="makebold">
+                            <i class="fa fa-blod"></i>
+                        </div>
+                        <div class="item" data-action="makeitalic">
+                            <i class="fa fa-italic"></i>
+                        </div>
+                        <div class="item" data-action="makeunderline">
+                            <i class="fa fa-underline"></i>
+                        </div>
+                        <div class="item" data-action="selectfont" id="drop_font">
+                            <i class="fa fa-font"></i>
+                            <div class="drop_down">
+                                <b style="display: block;">字体选项</b>
+                                <span>字体大小:</span>
+                                <select id="select_size">
+                                    <option data-size="48">大号</option>
+                                    <option data-size="36">中号</option>
+                                    <option data-size="24">小号</option>
+                                </select>
+                                <br>
+                                <span>字体:</span>
+                                <select id="select_face">
+                                    <option data-face="微软雅黑">微软雅黑</option>
+                                    <option data-face="楷体">楷体</option>
+                                    <option data-face="Console">Console</option>    
+                                </select>
+                                <button id="font-btn">确定</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="group">
+                        <div class="item item_content" data-action="makelink" id="drop_link">
+                            <i class="fa fa-link"></i>
+                            <div class="drop_down">
+                                <b style="display: block; float: left; margin-bottom: 6px">插入链接</b>
+                                <input type="text" onclick="return false;" id="link-input">
+                                <button id="link-btn">确定</button>
+                            </div>
+                        </div>
+                        <div class="item" data-action="makeorderlist">
+                            <i class="fa fa-list"></i>
+                        </div>
+                        <div class="item" data-action="insertimage" id="drop_img">
+                            <i class="fa fa-img"></i>
+                            <div class="drop_down">
+                                <b style="display: block; float: left; margin-bottom: 6px">插入图片链接</b>
+                                <br/>
+                                <input type="text" onclick="return false;" id="img-input">
+                                <br/>
+                                <button id="img-btn">确定</button>
+                            </div>
+
+                        </div>
+                        <div class="item" data-action="increaseQuoteLevel">
+                            <i class="fa fa-level"></i>
+                        </div>
+                    </div>
+                    <div class="group">
+                        <div class="item" data-action="makeHeading">
+                            <i class="fa fa-header"></i>
+                        </div>
+                        <div class="item" data-action="alignLeft">
+                            <i class="fa fa-aLeft"></i>
+                        </div>
+                        <div class="item" data-action="alignCenter">
+                            <i class="fa fa-aCenter"></i>
+                        </div>
+                        <div class="item" data-action="alignRight">
+                            <i class="fa fa-aRight"></i>
+                        </div>
+
+                    </div>
+                    <div class="group">
+                        <div class="item" data-action="undo">
+                            <i class="fa fa-undo"></i>
+                        </div>
+                        <div class="item" data-action="redo">
+                            <i class="fa fa-redo"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <script type="text/javascript">
+                $('.item').click(function () {
+                    console.log($(this).data().action);
+                    richtextTool($(this).data().action);
+                });
+
+                $('.drop_down').hover(function () {
+                    childListening = true;
+                    console.log("hover in");
+                }, function () {
+                    childListening = false;
+                });
+
+                $('#font-btn').bind('click', function (event) {
+                    $(this).parent().css('visibility', 'hidden');
+                    console.log("font-clicked!");
+                    changeFont();
+                    event.stopPropagation();
+                });
+
+                $('#link-btn').bind('click', function (event) {
+                    $(this).parent().css('visibility', 'hidden');
+                    makeLink($('#link-input').val());
+                    event.stopPropagation();
+                });
+
+                $('#img-btn').bind('click', function (event) {
+                    $(this).parent().css('visibility', 'hidden');
+                    makeImg($('#img-input').val());
+                    event.stopPropagation();
+                });
+
+                $('#link-input').bind('focus', function () {
+                    console.log('input');
+                    event.stopPropagation();
+                });
+            </script>
+            <iframe id="myframe" name="myframe" src="js/document.html" frameborder="0" class="richtext"></iframe>
+            <div class="article-submit-div">
+                <button class="article-btn" id="article-btn-publish" onclick="$('.cover_mask').css('visibility', 'visible')">发表</button>
+                <button class="article-btn" id="article-btn-cancel" onclick="$('.mytextarea').css('visibility', 'hidden')">取消</button>
+            </div>
+        </div>
+    </article>
+    <div class="cover_mask">
+        <div class="cover_confirm">
+            <h2>封面设置</h2>
+            <div class="cover_img">
+                <div class="img_select">选择文件
+                    <input type="file" class="cover_img_input" id="cover_img" onchange="checkImg($(this))">
+                </div>
+                <img class="cover" id="cover">
+
+            </div>
+            <h2>标题</h2>
+            <div class="cover_header">
+                <input type="text" id="cover_heading">
+            </div>
+            <div class="cover-btn">
+                <button id="cover_confirm" onclick="publishArticle()">确定</button>
+                <button id="cover_cancel" onclick="$('.cover_mask').css('visibility', 'hidden')">取消</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

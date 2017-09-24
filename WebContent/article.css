@@ -1,0 +1,143 @@
+.article_card {
+    width: 750px;
+    background: white;
+    border: 1px solid #dbe2e8;
+    border-radius: 2px;
+    box-shadow: 0 1px 2px rgba(46,61,73,.08);
+    transition: border .3s ease-in-out;
+    margin: 32px;
+    visibility: hidden;
+}
+
+.container {
+    
+    position: absolute;
+    margin-top: 170px;
+}
+
+.article_main {
+    margin-top: 28px;
+    margin-left: 160px;
+}
+
+.article_avatar {
+    margin: 20px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid rgba(54, 55, 56, 0.08);
+    box-shadow: 0 1px 2px rgba(46,61,73,.08);
+}
+
+.article_avatar img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    
+}
+
+.card_main img:hover {
+    cursor: pointer;
+}
+
+.article_img_mask {
+    width: 700px;
+    height: 233px;
+    margin-top: -233px;
+    margin-left: 20px;
+}
+
+.card_main img {
+    left: 10px;
+    right: 10px;
+    display: block;
+    margin: 0 auto;
+    margin-left: 20px;
+}
+
+.card_main .article_header {
+    font-weight: bold;
+    font-size: 14pt;
+    margin: 20px;
+}
+
+.card_main a:link{
+    color: black;
+}
+
+.card_main a:visited{
+    color: black;
+}
+
+.card_main .article_header:hover {
+    color: #d7191a;
+    cursor: pointer;
+}
+
+.article_brief {
+    color: #4a4a4a;
+    margin: 20px;
+}
+
+.article_contain {
+    margin-left: calc(50% - 350px);
+    position: absolute;
+    margin-top: 200px;
+    width: 700px;
+}
+
+.article_comment {
+    width: 700px;
+    height: 200px;
+}
+
+.article_comment h1 {
+    font-size: 16pt;
+}
+
+.comment_item {
+    visibility: hidden;
+    position: relative;
+    width: 90%;
+    margin-bottom: 42px;
+    
+}
+
+.comment_item .article_avatar {
+    float: left;
+    width: 48px;
+    height: 48px;
+    margin: 0px;
+    margin-left: 10px;
+}
+
+.comment_item .article_avatar img {
+    width: 48px;
+    height: 48px;
+}
+
+.comment_item .section {
+    margin-left: 82px;
+    
+}
+
+.comment_usr {
+    margin-top: 32px;
+    font-weight: bold;
+    margin-bottom: 12px;
+}
+
+#my_comment {
+    display: block;
+}
+
+#submit-comment {
+    float: right;
+    padding: 4px;
+    margin-top: -24px;
+}
+
+.black-btn {
+    color: #d7191a;
+    margin: 20px;
+}

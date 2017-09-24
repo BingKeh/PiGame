@@ -1,0 +1,46 @@
+var getUploadUrl = function(url, width, height, cut, useOriginal) {
+  var width = width || 0;
+  var height = height || 0;
+  var cut = cut || 1;
+  if (!url) {
+    if (width !== 0 && width <= 120) {
+      return 'https://cdn.sspai.com/sspai/assets/img/avatar/large.jpg?imageMogr2/quality/95/thumbnail/!120x120r/gravity/Center/crop/120x120';
+    } else {
+      return '';
+    }
+  }
+  var thumbUrl = '';
+  if (url.indexOf('http') === 0) {
+    return url;
+  }
+  if (useOriginal === true) {
+    thumbnail = window.configJson.cdnImages + url;
+    return thumbnail;
+  }
+  var size = '';
+  var cutStr = '';
+  var flag = '';
+  if (!width && !height) {
+    width = 80;
+  }
+  if (width === 0) {
+    size = 'x' + height;
+    flag = 'r';
+  } else if (height === 0) {
+    size = width + 'x';
+  } else {
+    size = width + 'x' + height;
+    flag = 'r';
+  }
+  if (cut) {
+    cutStr = '/gravity/Center/crop/' + size;
+  }
+
+  if (url) {
+    thumbUrl = window.configJson.cdnImages + url + '?imageMogr2/quality/95/thumbnail/!' + size + flag + cutStr;
+  } else {
+    thumbUrl = window.configJson.cdnImages + '/404.png?imageMogr2/thumbnail/!' + size + flag + cutStr;
+  }
+  return thumbUrl;
+}
+Vue.filter('getUploadUrl', getUploadUrl);

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://xmlns.jcp.org/xml/ns/javaee" xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd" id="WebApp_ID" version="3.1">
+  <display-name>PiGame</display-name>
+  <welcome-file-list>
+    <welcome-file>index</welcome-file>
+    <welcome-file>index.html</welcome-file>
+    <welcome-file>index.htm</welcome-file>
+    <welcome-file>index.jsp</welcome-file>
+    <welcome-file>default.html</welcome-file>
+    <welcome-file>default.htm</welcome-file>
+    <welcome-file>default.jsp</welcome-file>
+  </welcome-file-list>
+  <servlet>
+    <description>login action</description>
+    <servlet-name>login_action</servlet-name>
+    <servlet-class>pigame.do_login</servlet-class>
+  </servlet>
+  <servlet>
+    <description>Index Servlet</description>
+    <servlet-name>index_servlet</servlet-name>
+    <servlet-class>pigame.IndexServlet</servlet-class>
+  </servlet>
+  <servlet>
+    <description>Space Servlet</description>
+    <servlet-name>space_servlet</servlet-name>
+    <servlet-class>pigame.SpaceServlet</servlet-class>
+  </servlet>
+  <servlet>
+    <description>Upload Servlet</description>
+    <servlet-name>upload_servlet</servlet-name>
+    <servlet-class>pigame.uploadServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>login_action</servlet-name>
+    <url-pattern>/action
+    </url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>index_servlet</servlet-name>
+    <url-pattern>/index</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>space_servlet</servlet-name>
+    <url-pattern>/space</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>upload_servlet</servlet-name>
+    <url-pattern>/upload</url-pattern>
+  </servlet-mapping>
+</web-app>

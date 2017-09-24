@@ -1,0 +1,1445 @@
+Vue.use(VueLazyload, {
+  preLoad: 1.3,
+  error: 'data:img/jpg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQMAAAAl21bKAAAAA1BMVEXy8vJkA4prAAAACklEQVQI12NgAAAAAgAB4iG8MwAAAABJRU5ErkJggg==',
+  loading: '',
+  attempt: 3,
+});
+var $vm = new Vue({
+  el: '#app',
+  delimiters: ['${', '}'],
+  data() {
+    return {
+      origin: 'https://sspai.com',
+      header: {
+        searchModel: '',
+        topNavShow: true,
+        topSearchFormExpand: false,
+        avatarPopoverVisible: false,
+        noticePopoverVisible: false,
+        articleEditPopoverVisible: false,
+        systemList: [],
+        systemListLoaded: false,
+        subscribeList: [],
+        subscribeListLoaded: false,
+        systemScroll: null,
+        subscribeScroll: null,
+        noticeActiveName: 'notice/system',
+        showArticleAction: null,
+        systemQuery: {
+          offset: 0, // 页码
+          limit: 10, // 每页数据量
+        },
+        subscribeQuery: {
+          offset: 0, // 页码
+          limit: 10, // 每页数据量
+        },
+        showNavMenu: true,
+        toggleSecondHead: false,
+        toggleHead: false,
+      },
+      selectColumnId: '',
+      selectColumnTitle: '',
+      isLogin: '',
+      user: '',
+      reportDialogVisible: false,
+      reportOptions: [{
+        text: '广告垃圾信息',
+        value: '广告垃圾信息',
+      }, {
+        text: '版权侵犯',
+        value: '版权侵犯',
+      }, {
+        text: '攻击性言论',
+        value: '攻击性言论',
+      }, {
+        text: '其它',
+        value: '其它',
+      }, ],
+      reportReasonType: '广告垃圾信息',
+      reportFormData: {
+        reference_id: null,
+        type: 'comment',
+        reason: '',
+      },
+      adTitle: '',
+      showPop: false,
+      // 登录相关
+      login_visible: false,
+      login_closed: true,
+      unreadNotice: {},
+      article: {
+        relatedness: [],
+        supList: [],
+        directory: [],
+        articleId: 0,
+        favorited: false,
+        likeStatus: false,
+        is_contributed_by_signed_writer: false,
+        authorId: '',
+        advertisement: null,
+        advert_end: null,
+        author: {
+          followed: false,
+          special_columns: [{
+            followed: false,
+            id: '',
+          }, ],
+        }
+      },
+      qrcodeGenerated: false,
+      commentListShowed: [],
+      commentList: [],
+      commentLength: 0,
+      getItemDone: false,
+      replyFormStatus: false,
+      commentLoaded: false,
+      adReqDone: false,
+      moreText: '载入更多',
+      showAppBtn: false,
+      contactDialogVisible: false,
+    }
+  },
+  mounted() {
+    var _this = this;
+    this.$nextTick(function() {
+      _this.header_mounted();
+      if (_this.$login.isLogin) {
+        _this.getUnreads();
+      }
+      _this.article_mounted();
+      document.body.onclick = function() {
+        $vm.showPop = false;
+      }
+      _this.loadComments();
+
+      // 生成微信分享二维码
+      if (!_this.qrcodeGenerated) {
+        const qrCode = new AraleQRCode({
+          // text: 'https://sspai.com',
+          text: window.location.href,
+          size: 80,
+        });
+        document.querySelector('#qr-code').appendChild(qrCode);
+        _this.generated = true;
+      }
+
+      // open in app button for ios
+      if (_this.$device.isIOS) {
+        _this.showAppBtn = true;
+      }
+
+      // _this.weixinConfig();
+      if (_this.$device.isWechat) {
+        // 配置
+        var url = window.location.href;
+        // let imgUrl = document.querySelector('article').querySelector('.banner').src || 'https://cdn.sspai.com/2017/04/19/fb28fd704853f4900edb6c5790ec7f7f.png';
+        var imgUrl = '';
+        var desc = '';
+        var title = '';
+        var meta = document.getElementsByTagName('meta');
+        Array.prototype.forEach.call(meta, function(item) {
+          if (item.name === 'description') {
+            desc = item.content;
+          }
+          if (item.name === 'promote_title') {
+            title = item.content;
+          }
+          if (item.name === 'promote_image') {
+            imgUrl = item.content;
+          }
+        });
+        _this.$http.get(`/jssdk/sign?url=${url}`).then(function(res) {
+          wx.config({
+            debug: false,
+            appId: res.data.appid,
+            timestamp: res.data.timestamp,
+            nonceStr: res.data.noncestr,
+            signature: res.data.sign,
+            jsApiList: ['onMenuShareTimeline', 'onMenuShareAppMessage']
+          });
+          console.log(desc);
+          wx.ready(function() {
+            wx.onMenuShareTimeline({ // 分享朋友圈
+              title: title, // 分享标题
+              link: url, // 分享链接
+              imgUrl: imgUrl, // 分享图标
+            });
+            wx.onMenuShareAppMessage({ // 分享给好友
+              title: title, // 分享标题
+              desc: desc, // 分享描述
+              link: url, // 分享链接
+              imgUrl: imgUrl, // 分享图标
+            });
+          })
+        });
+      }
+    });
+
+  },
+  computed: {
+    // 有无新消息
+    hasUnreadNotice: function() {
+      return this.unreadNotice.notificationsCount > 0 || this.unreadNotice.followingActivitiesCount > 0;
+    },
+    hasUnreadMessage: function() {
+      return this.unreadNotice.messagesCount > 0;
+    },
+    user_imageUrl: function() {
+      var data = this.user;
+      var size = 60;
+      if (data.avatar) {
+        return this.$options.filters.getUploadUrl(data.avatar, size, size);
+      } else {
+        return this.$options.filters.getUploadUrl(`sspai/assets/img/avatar/large.jpg`, size, size);
+      }
+    },
+    reportReasonVisible: function() {
+      return this.reportReasonType === '版权侵犯' || this.reportReasonType === '其它';
+    },
+    hasColumn: function() {
+      return this.user && ((this.user.role === 'writer' || this.user.role === 'admin') && (this.user.special_column_writer === true || this.user.signed_writer === true)); // 是否有专栏
+    },
+    isWriter: function() {
+      return this.user && (this.user.role === 'writer' || this.user.role === 'admin'); // 是否是作者
+    },
+  },
+  watch: {
+    isLogin: function() {
+      this.user = JSON.parse(localStorage.getItem('user'));
+    },
+    login_visible: function(val) {
+      if (val === false) {
+        this.closeDialog();
+      } else {
+        this.login_closed = false;
+      }
+    },
+    'header.noticePopoverVisible': function(val) {
+      if (val && this.header.systemList.length === 0) {
+        this.header_fetchSystemData();
+      }
+      if (!val) {
+        this.unreadNotice.notificationsCount = 0;
+        this.unreadNotice.followingActivitiesCount = 0;
+      }
+    },
+    'header.systemList': function(newVal, oldVal) {
+      if (newVal !== oldVal) {
+        if (!this.header.systemScroll) {
+          var _this = this;
+          this.$nextTick(function() {
+
+            _this.header.systemScroll = new IScroll(_this.$refs.systemWrapper, {
+              mouseWheel: true,
+              scrollbars: true,
+              interactiveScrollbars: true,
+              fadeScrollbars: true,
+            });
+            _this.header.systemScroll.on('scrollEnd', function() {
+              if (_this.scrollerHeight - _this.wrapperHeight <= Math.abs(_this.y)) {
+                _this.header_fetchSystemData(true).then(function() {
+                  _this.header.systemScroll.refresh();
+                });
+              }
+            });
+          });
+        }
+      }
+    },
+    'header.subscribeList': function(newVal, oldVal) {
+      if (newVal !== oldVal) {
+        if (!this.header.subscribeScroll) {
+          var _this = this;
+          this.$nextTick(function() {
+            _this.header.subscribeScroll = new IScroll(_this.$refs.subscribeWrapper, {
+              mouseWheel: true,
+              scrollbars: true,
+              interactiveScrollbars: true,
+              fadeScrollbars: true,
+            });
+            _this.header.subscribeScroll.on('scrollEnd', function() {
+              if (_this.scrollerHeight - _this.wrapperHeight <= Math.abs(_this.y)) {
+                _this.header_fetchSubscribeData(true).then(function() {
+                  _this.header.subscribeScroll.refresh();
+                });
+              }
+            });
+          });
+        }
+      }
+    },
+    'header.topNavShow': function() {
+      if (this.header.topNavShow) {
+        this.$refs.topNav.classList.add('expand');
+        document.body.style.overflow = 'hidden';
+      } else {
+        this.$refs.topNav.classList.remove('expand');
+        document.body.style.overflow = 'auto';
+      }
+    },
+    'header.topSearchFormExpand': function(e) {
+      if (this.header.topSearchFormExpand) {
+        this.$refs.searchForm.classList.add('expand');
+        this.$refs.searchForm.querySelector('input').focus();
+      } else {
+        this.$refs.searchForm.classList.remove('expand');
+      }
+    },
+  },
+  methods: {
+    recommendInSimilars() {
+      var _this = this;
+      this.$http.get('recommends', {
+        params: {
+          limit: 1,
+          offset: 0,
+          status: 'released',
+          sort: 'released_or_retired_at',
+          type: 'similar'
+        }
+      }).then(function(res) {
+        if (!res.data.error && res.data.list.length !== 0) {
+          _this.article.relatedness = _this.article.relatedness.slice(0, 3);
+          var _result = res.data.list[0];
+          var result = {};
+          if (_result.ad_type === 2) {
+            var ios_ifa = null;
+            var android_ifa = null;
+            var adRef = encodeURIComponent(window.location.href);
+            var etoronUrl = _result.ad_api + `&ref=${adRef}&dnt=0`;
+            if (_this.$device.isAndroid) {
+              android_ifa = 'sspai.com';
+              etoronUrl += `&android_ifa=${android_ifa}`;
+            }
+            if (_this.$device.isIphone || _this.$device.isIpad || _this.$device.isIpod) {
+              ios_ifa = 'sspai.com';
+              etoronUrl += `&ios_ifa=${ios_ifa}`;
+            }
+            $.ajax({
+              url: etoronUrl,
+              method: 'get',
+              success: function(response) {
+                if (response.status !== 'ok' || !response.click_url) {
+                  result = _result;
+                  result.click_url = '//sspai.com' + _result.code;
+                  _this.createRecommandInSimilars(result);
+                  return;
+                }
+                result.click_url = response.click_url;
+                result.image = response.banner.url;
+                result.title = _result.title
+                response.impressions.forEach(function(item) {
+                  var img = document.createElement('img');
+                  img.src = item;
+                  img.style.width = 0;
+                  img.style.height = 0;
+                  document.body.appendChild(img);
+                });
+                _this.createRecommandInSimilars(result);
+              },
+              error: function() {
+                result = _result;
+                result.click_url = '//sspai.com' + _result.code;
+                _this.createRecommandInSimilars(result);
+              }
+            })
+          } else {
+            result = _result;
+            result.click_url = '//sspai.com' + _result.code;
+            _this.createRecommandInSimilars(result);
+          }
+        }
+      });
+    },
+    createRecommandInSimilars(result) {
+      var i = Math.ceil(Math.random() * 3);
+      var $pos = $('.related-article .article-card:nth-of-type('+i+')');
+      var $card = $('<div class="related-recommend"></div>');
+      $card.html('<a href="'+result.click_url+'" class="thumbnail"><img src="https://cdn.sspai.com/'+result.image+'"></a><h3><a href="'+result.click_url+'">'+result.title+'</a></h3><span>&lt;ad&gt;</span>');
+      $pos.after($card);
+    },
+    openInApp: function() {
+      var ver = (navigator.appVersion).match(/OS (\d+)_(\d+)_?(\d+)?/);
+      ver = parseInt(ver[1], 10);
+      if (this.$device.isIOS) {
+        if (ver >= 9) {
+          location.href = 'https://ios.sspai.com/oia.html?post=' + this.article.articleId;
+          return;          
+        }
+        window.location.href = 'sspai://sspai.com/post/' + this.article.articleId;
+        var loadDateTime = Date.now();
+        setTimeout(function() {
+          var timeOutDateTime = Date.now();
+          if (timeOutDateTime - loadDateTime < 1000) {
+            window.location.href = "https://itunes.apple.com/us/app/少数派-高品质数字消费指南/id1191720421?l=zh&ls=1&mt=8";
+          }
+        }, 25);
+      }
+    },
+    article_mounted: function() {
+      var _this = this;
+      if (document.querySelectorAll('code').length > 0) {
+        var hllink = document.createElement('link');
+        hllink.rel = 'stylesheet';
+        hllink.href = '/public/scripts/plugins/highlight/highlight.default.css';
+        var hlscript = document.createElement('script');
+        hlscript.src = '/public/scripts/plugins/highlight/highlight.pack.js';
+        document.head.appendChild(hllink);
+        document.head.appendChild(hlscript);
+        hlscript.onload = function() {
+          hljs && hljs.initHighlightingOnLoad();
+        }
+      }
+
+      _this.article_loadRelated();
+
+      // $.getScript('https://sspai.com/assets/editor/lib/ss_extend_plugin.js', () => {
+      //   $(document).trigger('formatDocument');
+      // });
+
+      var show_content_table = document.getElementById('show_content_table').getAttribute('data-show-content-table');
+      if (show_content_table === 'true' || show_content_table === true) {
+        _this.article.directory = Array.prototype.filter.call(_this.$refs.content.querySelectorAll('h2'), function(item) {
+          if (item.id) {
+            return true;
+          }
+        });
+      }
+
+      // 脚注
+      Array.prototype.forEach.call(_this.$refs.content.querySelectorAll('sup'), function(el) {
+        var supTitle = decodeURIComponent(el.title);
+        var supTipsContent = supTitle.replace(/(https?:\/\/\S+)/gi, function(match, link) {
+          return '<a href=' + link + ' target="_blank">' + link + '</a> ';
+        });
+        // 生成脚注
+        _this.article.supList.push({
+          id: el.getAttribute('sup-id'),
+          value: supTitle,
+          content: supTipsContent,
+        });
+        // 添加脚注tips
+        var supTips = document.createElement('div');
+        var pointer = document.createElement('div');
+        pointer.className = 'pointer';
+        supTips.className = 'sup-tips';
+        supTips.innerHTML = supTipsContent;
+        supTips.appendChild(pointer);
+        el.appendChild(supTips);
+        // 去除浏览器自带tips
+        el.setAttribute('data-title', decodeURIComponent(el.title));
+        el.removeAttribute('title');
+      });
+      if (_this.article.supList.length > 0) {
+        _this.$refs.content.addEventListener('click', function(e) {
+          if (e.target.tagName === 'SUP') {
+            var supTips = e.target.lastChild;
+            var pointer = supTips.lastChild;
+            e.target.style.position = 'relative';
+            if (supTips.className === 'sup-tips') {
+              supTips.style.display = 'table';
+              if (_this.$device.isTouch) {
+                if (e.target.offsetLeft < supTips.offsetWidth / 2) {
+                  // console.log('too left');
+                  supTips.style.left = supTips.offsetWidth / 2 + 'px';
+                  pointer.style.left = e.target.offsetWidth / 2 + 'px';
+                }
+                if (e.target.offsetLeft + supTips.offsetWidth / 2 > document.body.clientWidth) {
+                  // console.log('too right');
+                  supTips.style.left = (-supTips.offsetWidth / 2 + e.target.offsetWidth) + 'px';
+                  pointer.style.left = supTips.offsetWidth - e.target.offsetWidth / 2 + 'px';
+                }
+              }
+            }
+          } else {
+            if (e.target.className !== 'sup-tips') {
+              Array.prototype.forEach.call(_this.$refs.content.querySelectorAll('.sup-tips'), function(item) {
+                item.style.display = 'none';
+              });
+            }
+          }
+        });
+      }
+
+      // 图片点击lightgallery效果
+      var images = _this.$refs.content.querySelectorAll('img');
+      if (_this.$device.isDesktop) {
+        var galleryData = [];
+        [].forEach.call(images, function(img, index) {
+          if (img.dataset.uselightbox === 'false') {
+            return;
+          }
+          img.setAttribute('data-index', index);
+          var subHtml = '';
+          if (img.nextSibling && img.nextSibling.tagName === 'FIGCAPTION') {
+            subHtml = img.nextSibling.innerText;
+          }
+          galleryData.push({
+            subHtml: '<h4>' + subHtml + '</h4>',
+            src: img.getAttribute('data-original'),
+            thumb: img.src,
+          });
+          // img.setAttribute('data-original', img.src);
+          // img.removeAttribute('src');
+        });
+
+        _this.$refs.content.addEventListener('click', function(e) {
+          if (e.target.tagName === 'IMG' && e.target.dataset.uselightbox !== 'false') {
+            e.preventDefault();
+            e.stopPropagation();
+
+            window.lightGallery(e.target, {
+              dynamic: true,
+              keyPress: true,
+              backdropDuration: 250,
+              thumbnail: true,
+              index: e.target.getAttribute('data-index') || 0,
+              download: true,
+              dynamicEl: galleryData,
+            });
+          }
+
+          if (e.target.tagName === 'A' && /itunes\.apple\.com/.test(e.target.href)) {
+            var href = e.target.href;
+            if (href.indexOf('&at=10lJSw') === -1) {
+              e.preventDefault();
+              if (href.indexOf('?') > -1) {
+                window.open(e.target.href + '&at=10lJSw&ct=post');
+              } else {
+                window.open(e.target.href + '?at=10lJSw&ct=post');
+              }
+            }
+          }
+        });
+      }
+
+
+      if (_this.$device.isTouch) {
+        _this.$refs.content.addEventListener('click', function(e) {
+          if (e.target.tagName === 'IMG') {
+            e.preventDefault();
+            e.stopPropagation();
+            window.open(e.target.src);
+          }
+        });
+        // [].forEach.call(images, (img, index) => {
+        //   img.setAttribute('data-original', img.src);
+        //   img.removeAttribute('src');
+        // });
+      }
+
+
+      // full-width图片的自适应样式修改
+      if (_this.$device.isTouch) {
+        $('figure.full-width').css({
+          'width': document.body.clientWidth,
+          'margin-left': '-20px',
+          'left': 0,
+        });
+      }
+
+      // 图片懒加载
+      // $(images).lazyload({
+      //   failure_limit: 1,
+      //   skip_invisible: false,
+      // });
+
+      // 相关数据
+      var data = document.getElementById('data_table');
+      _this.article.articleId = parseInt(data.dataset.articleid);
+      _this.article.authorId = parseInt(data.dataset.authorid);
+      _this.article.author.special_columns[0].id = parseInt(data.dataset.column_id);
+      _this.article.is_contributed_by_signed_writer = data.dataset.is_contributed_by_signed_writer === 'true' ? true : false;
+
+      // 指定文章广告
+      if (data.dataset.advertisement_id != '0') {
+        // console.log(1);
+        // replaced 'advertisements' to 'recommends'
+        _this.$http.get(`recommends`, {
+          params: {
+            id: data.dataset.advertisement_id,
+          }
+        }).then(function(res) {
+          if (res.data.list.length > 0) {
+            _this.article.advertisement = {
+              code: res.data.list[0].url ? 'https://sspai.com' + res.data.list[0].code : 'javascript:;',
+              url: res.data.list[0].url,
+              title: res.data.list[0].title,
+              image: res.data.list[0].image,
+            }
+          } else {
+            _this.article.advertisement = null;
+          }
+        });
+      }
+
+      // 加载文末广告
+      var adRef = encodeURIComponent(window.location.href);
+      // replaced 'advertisements' to 'recommends'
+      _this.$http.get(`recommends`, {
+        params: {
+          limit: 1,
+          offset: 0,
+          status: 'released',
+          sort: 'released_or_retired_at',
+          type: 'article_end'
+        }
+      }).then(function(res) {
+        if (res.data.list.length == 0 || !res.data) {
+          return;
+        }
+        if (res.data.list[0].ad_type === 2) {
+          var ios_ifa = null;
+          var android_ifa = null;
+          var etoronUrl = res.data.list[0].ad_api + `&ref=${adRef}&dnt=0`;
+          if (_this.$device.isAndroid) {
+            android_ifa = 'sspai.com';
+            etoronUrl += `&android_ifa=${android_ifa}`;
+          }
+          if (_this.$device.isIphone || _this.$device.isIpad || _this.$device.isIpod) {
+            ios_ifa = 'sspai.com';
+            etoronUrl += `&ios_ifa=${ios_ifa}`;
+          }
+          $.ajax({
+            url: etoronUrl,
+            method: 'get',
+            success: function(response) {
+              if (response.status === 'ok' && response.click_url) {
+                $vm.article.advert_end = {
+                  bannerUrl: response.banner.url,
+                  url: response.click_url,
+                };
+                response.impressions.forEach(function(item) {
+                  var img = document.createElement('img');
+                  img.src = item;
+                  img.style.width = 0;
+                  img.style.height = 0;
+                  document.body.appendChild(img);
+                });
+                $vm.adReqDone = true;
+              } else {
+                if (res.data.list[0].image) {
+                  $vm.article.advert_end = {
+                    code: res.data.list[0].url ? 'https://sspai.com' + res.data.list[0].code : 'javascript:;',
+                    title: res.data.list[0].title,
+                    url: res.data.list[0].url,
+                    image: res.data.list[0].image,
+                  }
+                } else {
+                  $vm.article.advert_end = null;
+                }
+              }
+            },
+            error: function() {
+              if (res.data.list[0].image) {
+                $vm.article.advert_end = {
+                  code: res.data.list[0].url ? 'https://sspai.com' + res.data.list[0].code : 'javascript:;',
+                  title: res.data.list[0].title,
+                  url: res.data.list[0].url,
+                  image: res.data.list[0].image,
+                }
+              } else {
+                $vm.article.advert_end = null;
+              }
+            }
+          });
+        }
+
+        if (res.data.list[0].ad_type === 1 || res.data.list[0].ad_type === 0) {
+          _this.article.advert_end = {
+            code: res.data.list[0].url ? 'https://sspai.com' + res.data.list[0].code : 'javascript:;',
+            title: res.data.list[0].title,
+            url: res.data.list[0].url,
+            image: res.data.list[0].image,
+          }
+        }
+      })
+
+
+
+
+      var userId = _this.isLogin ? _this.user.id : 0;
+      _this.$http.get(`article/count/info/get?article_id=${_this.article.articleId}&user_id=${userId}`).then(function(res) {
+        _this.commentLength = res.data.comment_count;
+        _this.article.favorited = res.data.favorited;
+        _this.article.likeStatus = res.data.liked;
+        _this.article.author.followed = res.data.followed_author;
+        _this.article.author.special_columns[0].followed = res.data.followed_column;
+      });
+      if (_this.isLogin && _this.article.authorId === _this.user.id && !_this.article.is_contributed_by_signed_writer) {
+        _this.header.showArticleAction = {
+          id: _this.article.articleId,
+        };
+      }
+
+      $(document).trigger('formatDocument');
+    },
+    header_switchNoticeTabs: function(tab, e) {
+      if (this.header.noticePopoverVisible) {
+        if (tab.name === 'notice/system' && this.header.systemList.length === 0) {
+          this.header_fetchSystemData();
+        }
+        if (tab.name === 'notice/subscribe') {
+          if (this.header.subscribeList.length === 0) {
+            this.header_fetchSubscribeData();
+          }
+          if (this.unreadNotice.followingActivitiesCount > 0) {
+            // this.$store.commit(this.types.notice.UPDATE_SUBSCRIBE_UNREAD, 0);
+            this.unreadNotice.followingActivitiesCount = 0;
+          }
+        }
+        this.header.noticeActiveName = tab.name;
+      }
+    },
+    header_fetchSystemData: function(isAppend) {
+      var _this = this;
+      return this.$http.get(`notifications`, { params: this.header.systemQuery }).then(function(response) {
+        if (!response.data.error) {
+          _this.header.systemListLoaded = true;
+          if (isAppend) {
+            _this.header.systemList = _this.header.systemList.concat(response.data.list);
+            _this.header.systemQuery.offset += _this.header.systemQuery.limit;
+          } else {
+            _this.header.systemQuery.offset = 0;
+            _this.header.systemList = response.data.list;
+            _this.header.systemQuery.offset += _this.header.systemQuery.limit;
+          }
+        }
+      });
+    },
+    header_fetchSubscribeData: function(isAppend) {
+      var _this = this;
+      return this.$http.get(`following_activities`, { params: this.header.subscribeQuery }).then(function(response) {
+        if (!response.error) {
+          _this.header.subscribeListLoaded = true;
+          var list = response.data.list;
+          for (var i = 0; i < list.length; i++) {
+            var item = list[i].html;
+            if (item.substring(0, 2) !== '<a') {
+              var userDes = '<a target="_blank" href="https://sspai.com/user/' + list[i].user.id + '">' + list[i].user.nickname + '</a> ';
+              item = userDes + item;
+              list[i].html = item;
+            }
+          }
+          if (isAppend) {
+            _this.header.subscribeList = _this.header.subscribeList.concat(list);
+            _this.header.subscribeQuery.offset += _this.header.subscribeQuery.limit;
+          } else {
+            _this.header.subscribeQuery.offset = 0;
+            _this.header.subscribeList = list;
+            _this.header.subscribeQuery.offset += _this.header.subscribeQuery.limit;
+          }
+        }
+      });
+    },
+    // 获得通知未读数
+    getUnreads: function() {
+      var _this = this;
+      this.$http.get('unreads').then(function(response) {
+        _this.unreadNotice = {
+          notificationsCount: response.data.notifications_count,
+          followingActivitiesCount: response.data.following_activities_count,
+          messagesCount: response.data.messages_count,
+        }
+      });
+    },
+    header_mounted: function() {
+      var _throttle = function(fn, delay) {
+        var last, timer;
+        var threshhold = threshhold || 250;
+
+        return function() {
+          var now = +new Date();
+          var args = arguments;
+          var that = this;
+          if (last && now < last + threshhold) {
+            clearTimeout(timer);
+
+            // 保证在当前时间区间结束后，再执行一次 fn
+            timer = setTimeout(function() {
+              last = now;
+              fn.apply(that, args);
+            }, threshhold);
+
+            // 在时间区间的最开始和到达指定间隔的时候执行一次 fn
+          } else {
+            last = now;
+            fn.apply(that, args);
+          }
+        };
+      }
+      this.header.topNavShow = window.screen.width > 768;
+      this.header.topSearchFormExpand = !!this.$refs.searchInput.value;
+      document.addEventListener('scroll', _throttle(this.headerScrollHandler));
+      this.user = JSON.parse(localStorage.getItem('user'));
+      this.isLogin = this.user ? true : false;
+    },
+    headerScrollHandler: function(e) {
+      var headerEl = document.querySelector('#header');
+      e.target.oldScrollTopPosition = e.target.scrollTopPosition || 0;
+      e.target.scrollTopPosition = (window.pageYOffset || document.scrollTop) - (document.clientTop || 0) || 0;
+      var direction = 'down';
+      if (e.target.scrollTopPosition - e.target.oldScrollTopPosition < 0) {
+        direction = 'up';
+      }
+      if (this.$device.isDesktop || window.screen.width > 768) {
+        if (e.target.scrollTopPosition > 0) {
+          this.header.showNavMenu = false;
+        } else {
+          this.header.showNavMenu = true;
+        }
+        if (e.target.scrollTopPosition > headerEl.offsetHeight) {
+          this.header.toggleSecondHead = true;
+        } else {
+          this.header.toggleSecondHead = false;
+        }
+      }
+      if (this.$device.isTouch) {
+        if (e.target.scrollTopPosition > 0) {
+          if (direction === 'down') {
+            this.header.toggleHead = true;
+          } else {
+            this.header.toggleHead = false;
+          }
+          this.header.toggleSecondHead = true;
+        } else {
+          this.header.toggleSecondHead = false;
+        }
+      }
+
+      if (this.$device.isIOS) {
+        if (direction === 'up') {
+          this.showAppBtn = true;
+        }
+        if (direction === 'down' && e.target.scrollTopPosition >= 1200) {
+          this.showAppBtn = false;
+        }
+      }
+    },
+    closeDialog: function() {
+      this.login_visible = false;
+      this.login_closed = true;
+    },
+    // 打开登录框
+    showLoginDialog: function() {
+      if (this.$device.isDesktop) {
+        if (this.$refs.loginDialog) {
+          this.login_visible = true;
+        }
+      } else {
+        var router = window.location.href.replace('https://sspai.com/', '')
+        sessionStorage.setItem('referer', router);
+        window.location.href = 'https://sspai.com/login';
+      }
+    },
+    // 登录确定
+    login_submit: function(e) {
+      function serializeObject(form) {
+        var o = {};
+        $.each(form.serializeArray(), function(index) {
+          if (o[this['name']]) {
+            o[this['name']] = o[this['name']] + "," + this['value'];
+          } else {
+            o[this['name']] = this['value'];
+          }
+        });
+        return o;
+      }
+      var formData = serializeObject($(e.target));
+      var email = formData.email;
+      email = email.toLowerCase();
+      formData.email = email;
+      formData.type = 'user';
+      var _this = this;
+      this.$http.post('session', formData).then(function(response) {
+        if (response.data.error) {
+          _this.$message({
+            message: response.data.message,
+            type: 'error'
+          });
+        } else {
+          _this.$login.updateUserCache(response.data.user, formData.remember);
+          _this.$login.updateTokenCache(response.data.token);
+          if (localStorage.getItem('token')) {
+            axios.defaults.headers.common['Authorization'] = 'Bearer ' + localStorage.getItem('token');
+          }
+          _this.$message({
+            message: '欢迎回来！',
+            type: 'success'
+          });
+          _this.user = JSON.parse(localStorage.getItem('user'));
+          _this.isLogin = true;
+
+          _this.login_visible = false;
+          _this.header.avatarPopoverVisible = false;
+          if (_this.redirect) {
+            var router = sessionStorage.getItem('referer') || '';
+            window.location.href = `https://sspai.com/${router}`;
+          }
+        }
+      });
+    },
+    // 退出登录
+    login_logout: function() {
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      this.isLogin = false;
+      this.header.avatarPopoverVisible = false;
+    },
+    login_socialAuth: function(channel) {
+      var authData = {};
+      switch (channel) {
+        case 'weibo':
+          window.open(`https://sspai.com/api/v1/session/social_networks/weibo?display=${this.$device.isTouch ? 'mobile' : 'default'}`);
+          break;
+        case 'wechat':
+          if (this.$device.isWechat) {
+            window.open(`https://open.weixin.qq.com/connect/oauth2/authorize?appid=wx5fcbd08737189722&redirect_uri=https%3A%2F%2Fsspai.com%2Fcallback%2Fweixin_mp&response_type=code&scope=snsapi_userinfo&state=sspai_mp#wechat_redirect`);
+          } else {
+            window.open(`https://sspai.com/api/v1/session/social_networks/weixin`);
+          }
+          break;
+      }
+    },
+    // 写作按钮逻辑
+    header_openWrite: function() {
+      if (!this.isLogin) {
+        this.showLoginDialog();
+      } else {
+        if (this.user.role === 'user') {
+          location.href = `${this.origin}/apply/writing`;
+        } else {
+          location.href = `${this.origin}/write`;
+        }
+      }
+    },
+    header_toggleTopNav: function() {
+      this.header.topNavShow = !this.header.topNavShow;
+    },
+    header_toggleSearchForm: function() {
+      this.header.topSearchFormExpand = !this.header.topSearchFormExpand;
+    },
+    header_blurSearchForm: function(e) {
+      if (e.target.value === '') {
+        this.header.topSearchFormExpand = false;
+      }
+    },
+    header_submitSearch: function(e) {
+      e.preventDefault();
+      if (this.$device.isTouch) {
+        this.header_toggleTopNav();
+      }
+      if (this.header.searchModel) {
+        window.location.href = `https://sspai.com/search?q=${this.header.searchModel}`;
+      }
+    },
+    toggleColumnDialog: function() {
+      if (this.isLogin) {
+        if (this.user.role === 'user') {
+          window.open('https://sspai.com/apply/writing'); // 开打写作权限申请页
+        } else {
+          this.$refs.tougao.open();
+        }
+      } else {
+        this.$message('请注册/登录以参与互动');
+      }
+    },
+    dialogClose: function() {
+      this.$refs.tougao.close();
+      this.selectColumnTitle = '';
+      document.body.click();
+    },
+    getOptions: function(query, cb) {
+      this.$http.get('special_columns', {
+        params: {
+          title: query || '',
+          limit: 5,
+        },
+      }).then(function(response) {
+        cb(response.data.list.map(function(item, index) {
+          return {
+            'value': item.title,
+            'id': item.id,
+          };
+        }));
+      });
+    },
+    handleSelect: function(item) {
+      this.selectColumnId = item.id;
+    },
+    tougaosubmit: function() {
+      if (this.selectColumnId) {
+        // 查询是否为该专栏主编或编辑
+        var isEditor = false;
+        var _this = this;
+        this.$http.get(`special_columns/${this.selectColumnId}`).then(function(response) {
+          var column = response.data;
+          if (column.author_id === _this.user.id) {
+            var isEditor = true;
+          } else {
+            _this.$http.get(`special_columns/${_this.selectColumnId}/editors`).then(function(response) {
+              var data = response.data.list;
+              for (var i in data) {
+                var item = data[i];
+                if (item.id === _this.user.id) {
+                  isEditor = true;
+                }
+              }
+              _this.$http.post(`special_columns/${_this.selectColumnId}/articles`, [{
+                id: parseInt(_this.article.articleId), //文章id
+              }]).then(function(response) {
+                if (response.data.error) {
+                  _this.$message({
+                    message: response.data.message,
+                    type: 'error'
+                  });
+                } else {
+                  _this.$refs.do.close();
+                  if (isEditor) {
+                    _this.$message({
+                      message: '文章已成功发布到专栏。',
+                      type: 'success',
+                    });
+                  } else {
+                    _this.$message({
+                      message: '投稿成功！请等待审核。',
+                      type: 'success'
+                    });
+                  }
+                }
+              });
+            });
+          }
+        });
+      } else {
+        this.$message('请选择专栏！');
+      }
+    },
+    deleteArticle: function(e) {
+      var _this = this;
+      if (this.header.showArticleAction && this.header.showArticleAction.id) {
+        this.$confirm('确认移入回收站吗？', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(function(res) {
+          return _this.$http.patch('articles/' + _this.header.showArticleAction.id, {deleted: true})
+          // _this.$http.delete(`articles/${_this.header.showArticleAction.id}`).then(function(res) {
+          //   if (res.data.error) {
+          //     _this.$message({
+          //       message: res.data.message,
+          //       type: 'error',
+          //     })
+          //   } else {
+          //     _this.$message({
+          //       message: '删除成功！',
+          //       type: 'success',
+          //     });
+          //   }
+          // })
+        }).then(function(res) {
+          if (res.data.error) {
+            _this.$message({message: res.data.message, type: 'error'});
+          } else {
+            _this.$message({message: '删除成功！', type: 'success'});
+          }
+        })
+      }
+      e.preventDefault();
+    },
+    article_gotoSup: function(id) {
+      /*scrollToElement(`[sup-id='${id}']`, {
+        offset: -150,
+        duration: -1,
+      });*/
+      var targetOffset = $('[sup-id=' + id + ']').offset().top - $('#header header').height();
+      $('html,body').animate({
+        scrollTop: targetOffset
+      }, 1000);
+    },
+    article_gotoDirectory: function(e) {
+      e.preventDefault();
+      /*scrollToElement(e.target.getAttribute('href'), {
+        duration: -1,
+        offset: -70,
+      });*/
+      var targetOffset = $(e.target.getAttribute('href')).offset().top - $('#header header').height();
+      $('html,body').animate({
+        scrollTop: targetOffset
+      }, 1000);
+    },
+    // 关注作者
+    toggleFollowAuthor: function() {
+      if (!this.isLogin) {
+        this.showLoginDialog();
+        return;
+      }
+      var _this = this;
+      this.$http.patch(`users/${this.article.authorId}`, {
+        followed: !this.article.author.followed,
+      }).then(function(res) {
+        if (res.data.error) {
+          _this.$message({
+            message: res.data.error,
+            type: 'error'
+          });
+        } else {
+          _this.article.author.followed = !_this.article.author.followed;
+          if (_this.article.author.followed) {
+            _this.$message({
+              message: '已关注作者',
+            });
+          } else {
+            _this.$message({
+              message: '已取消关注作者',
+            });
+          }
+        }
+      });
+    },
+    toggleFollowColumn: function() {
+      if (!this.isLogin) {
+        this.showLoginDialog();
+        return;
+      }
+      var columns = this.article.author.special_columns;
+      var _this = this;
+      this.$http.patch(`special_columns/${columns[0].id}`, {
+        followed: !columns[0].followed,
+      }).then(function(res) {
+        if (res.data.error) {
+          _this.$message({
+            message: res.data.error,
+            type: 'error'
+          });
+        } else {
+          columns[0].followed = !columns[0].followed;
+          if (columns[0].followed) {
+            _this.$message('已关注专栏');
+          } else {
+            _this.$message('已取消关注专栏');
+          }
+        }
+      });
+    },
+    article_loadRelated() {
+      var href = window.location.href;
+      var arr = href.split('/');
+      var url = 'articles/' + arr[arr.length - 1].split('?')[0].split('#')[0] + '/similars';
+      var _this = this;
+      this.$http.get(url).then(function(response) {
+        _this.article.relatedness = response.data;
+        _this.relatedLoaded = true;
+        setTimeout(function() {
+          _this.recommendInSimilars();
+        })
+      });
+    },
+    commentFocusHandler: function() {
+      if (!this.isLogin) {
+        this.showLoginDialog();
+      }
+    },
+    submitComment: function(e) {
+      if (!this.isLogin) {
+        this.showLoginDialog();
+        return;
+      }
+      var _this = this;
+      var loadingMask = this.$loading({
+        fullscreen: false,
+        target: e.target,
+      });
+      var fd = $(e.target).serializeArray();
+      var comment = fd[0].value;
+      comment = encodeURIComponent(comment).replace(/%0A/ig, '<br />');
+      comment = decodeURIComponent(comment);
+      this.$http.post(`articles/${this.article.articleId}/comments`, {
+        comment: comment
+      }).then(function(res) {
+        loadingMask.close();
+        if (res.data.error) {
+          _this.$message({
+            message: res.data.message,
+            type: 'error'
+          });
+        } else {
+          var myComment = res.data;
+          if (_this.commentListShowed.length > 0) {
+            _this.commentListShowed.unshift(myComment);
+          } else {
+            _this.commentListShowed.push(myComment);
+            _this.commentLength = 1;
+          }
+          _this.$forceUpdate();
+          _this.$message({
+            message: '评论成功！',
+            type: 'success'
+          });
+          e.target.reset();
+        }
+      })
+    },
+    postReport: function(e) {
+      e.preventDefault();
+      this.reportDialogVisible = false;
+      this.reportFormData.reason = `[${this.reportReasonType}]` + this.reportFormData.reason;
+      console.log(this.reportFormData)
+      var _this = this;
+      this.$http.post('accusations', this.reportFormData).then(function(res) {
+        if (res.data.error) {
+          _this.$message({
+            message: res.data.error,
+            type: 'error'
+          });
+        } else {
+          _this.reportFormData.reason = '';
+          _this.$message({
+            message: '举报成功！',
+            type: 'success'
+          });
+        }
+      })
+    },
+    collectHandler: function() {
+      if (!this.isLogin) {
+        this.showLoginDialog();
+        return;
+      }
+      var _this = this;
+      this.$http.patch(`articles/${this.article.articleId}`, {
+        favorited: !this.article.favorited
+      }).then(function(res) {
+        if (res.data.error) {
+          _this.$message({
+            message: res.data.error,
+            type: 'error'
+          });
+        } else {
+          _this.article.favorited = !_this.article.favorited;
+          if (_this.article.favorited) {
+            _this.$message({
+              message: '收藏成功！',
+              type: 'success'
+            })
+          } else {
+            _this.$message({
+              message: '已取消收藏！',
+              type: 'info'
+            })
+
+          }
+        }
+      })
+    },
+    reportHandler: function(id) {
+      if (!this.isLogin) {
+        this.showLoginDialog();
+        return;
+      }
+      this.reportDialogVisible = true;
+      this.reportFormData.reference_id = parseInt(id);
+    },
+    toggleLikeArticle: function() {
+      if (!this.isLogin) {
+        this.showLoginDialog();
+        return false;
+      }
+      var _this = this;
+      this.$http.patch(`articles/${this.article.articleId}`, {
+        liked: !this.article.likeStatus,
+      }).then(function(res) {
+        if (res.data.error) {
+          _this.$message({
+            message: res.data.error,
+            type: 'error'
+          });
+        } else {
+          var likesCount = $('.action-region>.btn-like>sup').text();
+          if (_this.article.likeStatus) {
+            _this.article.likeStatus = false;
+            likesCount--;
+          } else {
+            _this.article.likeStatus = true;
+            likesCount++;
+          }
+          $('.action-region>.btn-like>sup').text(likesCount);
+        }
+      })
+    },
+    toggleReplyForm: function(id, repId) {
+      if (!this.isLogin) {
+        this.showLoginDialog();
+        return false;
+      }
+      var replyForm = $('#replyForm-' + id);
+      replyForm.toggle();
+      if (repId !== undefined) {
+        replyForm.children('input').val(repId);
+      } else {
+        replyForm.children('input').val(id);
+      }
+      if (replyForm.find('textarea').is(':visible')) {
+        replyForm.find('textarea').focus();
+      }
+    },
+    submitReply: function(e, i) {
+      var fd = $(e.target).serializeArray();
+      var commentId;
+      var commentContent;
+      fd.forEach(function(item) {
+        if (item.name === 'comment_id') {
+          commentId = item.value;
+        }
+        if (item.name === 'comment') {
+          commentContent = item.value;
+        }
+      });
+      commentContent = encodeURIComponent(commentContent).replace(/%0A/ig, '<br />');
+      commentContent = decodeURIComponent(commentContent);
+      var loadingMask = this.$loading({
+        fullscreen: false,
+        target: e.target,
+      });
+      var _this = this;
+      this.$http.post(`comments/${commentId}/comments`, {
+        comment: commentContent
+      }).then(function(res) {
+        loadingMask.close();
+        if (res.data.error) {
+          _this.$message({
+            message: res.data.message,
+            type: 'error'
+          });
+        } else {
+          var reply = res.data;
+          reply.author = _this.user;
+          if (commentId < 0) {
+            reply.id = -reply.id;
+          }
+          _this.commentListShowed[i].comments.push(reply);
+          _this.$message({
+            message: '回复成功！',
+            type: 'success'
+          });
+          $('#replyForm-' + _this.commentListShowed[i].id).hide().find('textarea').val('');
+        }
+      })
+    },
+    toggleLike: function(item, index, pIndex) {
+      if (!this.isLogin) {
+        this.showLoginDialog();
+        return;
+      }
+      var fd = {
+        liked: !item.liked,
+      }
+      var _this = this;
+      console.log(item, index, pIndex);
+      this.$http.patch(`comments/${item.id}`, fd).then(function(res) {
+        if (res.data.error) {
+          _this.$message({
+            message: res.data.message,
+            type: 'error'
+          });
+        } else {
+          if (item.liked) {
+            item.liked = false;
+            item.likes_count--;
+          } else {
+            item.liked = true;
+            item.likes_count++;
+          }
+        }
+      })
+    },
+    loadComments: function() {
+      var _this = this;
+      var url = `comments?article_id=${this.article.articleId}`;
+      this.$http.get(url, {
+        params: {
+          limit: 10,
+          offset: 0
+        }
+      }).then(function(res) {
+        _this.commentListShowed = res.data.list;
+        _this.commentList = _this.commentListShowed;
+        if (res.data.total > 10) {
+          _this.commentLoaded = false;
+          if (location.hash) {
+            _this.loadMoreComment();
+          }
+        } else {
+          _this.commentLoaded = true;
+          if (location.hash) {
+            setTimeout(function() {
+              _this.goToComment(location.hash);
+            });
+          }
+        }
+      })
+    },
+    loadMoreComment: function() {
+      this.moreText = '载入中';
+      var url = `comments?article_id=${this.article.articleId}`;
+      var _this = this;
+      this.$http.get(url, {
+        params: {
+          limit: 9999,
+          offset: 10
+        }
+      }).then(function(res) {
+        res.data.list.forEach(function(item) {
+          _this.commentListShowed.push(item);
+        });
+        _this.commentLoaded = true;
+        if (location.hash) {
+          setTimeout(function() {
+            _this.goToComment(location.hash);
+          })
+        }
+      });
+    },
+    goToComment: function(id) {
+      var $target = $(id)
+      var targetOffset = $target.offset().top - $('#header header').height() - 50;
+      $('html,body').animate({
+        scrollTop: targetOffset
+      }, 500);
+      $target.css({
+        'background-color': '#fffbdd',
+        'transition': '0.8s'
+      });
+      setTimeout(function() {
+        $target.css('background-color', '');
+      }, 3000);
+    },
+    callback: function(data) {
+      if (data) {
+        // console.log(data);
+        if (data.user) {
+          this.closeDialog();
+          this.$login.updateUserCache(data.user);
+          this.$login.updateTokenCache(data.token);
+          this.user = JSON.parse(localStorage.getItem('user'));
+          this.isLogin = true;
+          this.login_visible = false;
+          this.header.avatarPopoverVisible = false;
+          this.$message({
+            message: '欢迎回来！',
+            type: 'success',
+          });
+          // window.location.href = 'https://sspai.com' + sessionStorage.getItem('referer') || '/';
+        } else {
+          window.location.href = 'https://sspai.com/connect/?platform_id=' + data.social_network.id + '&nickname=' + data.social_network.nickname;
+        }
+      }
+    },
+    closeContact: function() {
+      this.contactDialogVisible = false;
+    }
+  },
+  created() {
+    window.socialAuthCallback = this.callback;
+  }
+})

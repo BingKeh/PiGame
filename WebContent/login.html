@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link href="style.css" type="text/css" rel="stylesheet">
+    <script type="text/javascript" src="js/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript" src="js/qrcode.js"></script>
+    <script type="text/javascript" src="js/my.js"></script>
+
+    <title>用户登入</title>
+</head>
+
+<body>
+    <header>
+        <nav>
+            <div class="div_blur_mask">
+                <div class="nav_mask"></div>
+                <div class="nav_blur" id="login_nav"></div>
+
+            </div>
+
+            <div class="nav_div">
+                <div class="nav_left">
+                    <ul>
+                        <li><a href="index">🐷&nbsp;&nbsp;&nbsp;主站</a></a>
+                        </li>
+                        <li><a href="lol.jsp">游戏</a></li>
+                        <li><a href="article.jsp">文章</a></li>
+                        <li><a href="#">讨论</a></li>
+                        <li><a href="#">视频</a></li>
+                    </ul>
+                </div>
+                <div class="nav_right">
+                    <ul>
+                        <li><a href="login.html">登录</a></li>
+                        <li id="nav_divider">|</li>
+                        <li><a href="register.html">注册</a></li>
+                        <li><a href="#">我的</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <div class="div_logo" id="login_logo"></div>
+        <div class="div_bg" id="login_banner">
+            <img src="login_logo.png" id="img_login_banner" />
+        </div>
+    </header>
+
+
+    <article>
+        <div class="login_title">
+            <span>登录</span>
+        </div>
+        <div class="login_body">
+            <div class="login_pic">
+                <div id="qrcode"></div>
+                <script type="text/javascript">
+                    var qrcode = new QRCode(document.getElementById("qrcode"), {
+                        width: 150,
+                        height: 150
+                    });
+
+                    function makeCode() {
+                        qrcode.makeCode('http://www.baidu.com/sfasdfsdg3523/5345gsdrgy/5234535');
+                    }
+
+                    makeCode();
+                </script>
+                <div class="scan_span">
+                    <span>扫描二维码登录</span>
+                </div>
+
+                <div id="scan_img"></div>
+            </div>
+            <div class="login_divider"></div>
+            <div class="login_input">
+                <div class="input_body">
+                    <form action="do_login" method="post">
+                        <ul class="input_ul">
+                            <li>
+                                <input type="text" name="user_name" id="usr" placeholder="手机号/用户名">
+                                <span id="usr_hint" class="span_hint"></span>
+                            </li>
+                            <li>
+                                <input type="password" name="user_pwd" id="pwd" placeholder="密码">
+                                <span id="psd_hint" class="span_hint"></span>
+                            </li>
+                            <li>
+                                <div class="login_slide">
+                                    <div class="slider_guide" id="guide">将滑块滑向右端,完成验证</div>
+                                    <div class="slider_guide slider_mask" id="mask"></div>
+                                    <div class="slider_slider" id="slider"></div>
+                                    <script type="text/javascript">
+                                        var isOk = 0;
+                                        var isDown = 0;
+                                        var slider = $('#slider');
+                                        slider.mousedown(function () {
+                                            isDown = 1;
+                                            console.log("slider down!");
+                                        })
+                                        slider.mouseleave(function () {
+                                            isDown = 0;
+                                            if (!isOk) {
+                                                document.getElementById('slider').setAttribute('style', 'margin-left: 0px');
+                                                document.getElementById('mask').setAttribute('style', 'visibility: hidden; width: 0px');
+                                            }
+                                        })
+                                        slider.mouseup(function () {
+                                            isDown = 0;
+                                            if (!isOk) {
+                                                document.getElementById('slider').setAttribute('style', 'margin-left: 0px');
+                                                document.getElementById('mask').setAttribute('style', 'visibility: hidden; width: 0px');
+                                            }
+                                        })
+                                        var guide = $('#guide');
+                                        $(document).mousemove(function (event) {
+                                            //console.log(guide.offset().left + " ,   " + guide.offset().top);
+                                            if (isDown && !isOk) {
+                                                var x = event.pageX - guide.offset().left;
+                                                console.log("The real x is " + x);
+                                                if (x - 22 < 0) {
+                                                    return;
+                                                }
+                                                if (x - 22 >= 218) {
+                                                    document.getElementById('slider').setAttribute('style', 'margin-left: ' + 218 + 'px; background-position: 0 -260px');
+                                                    document.getElementById('mask').setAttribute('style', 'visibility: visible; width: 260px');
+                                                    document.getElementById('mask').innerText = '验证完成';
+                                                    isOk = 1;
+                                                    return;
+                                                }
+                                                document.getElementById('slider').setAttribute('style', 'margin-left: ' + (x - 22) + 'px');
+                                                document.getElementById('mask').setAttribute('style', 'visibility: visible; width: ' + x + 'px');
+                                            }
+                                        })
+                                    </script>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="action_info">
+                                    <input type="checkbox" name="rem_check" id="rem">
+                                    <span id="span_rem">记住我&nbsp;&nbsp;</span>
+                                    <span style="color: #bbb; font-size: 10px;">
+                                    请不要再公共电脑上勾选</span>
+                                    <a href="#" class="a_action">忘记密码?</a>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="login_action">
+                                    <input type="submit" name="login_sub" id="sub" value="登录" class="btn-primary">
+                                    <input type="button" name="register_btn" id="re_btn" value="注册" onclick="location.href='register.html'">
+                                </div>
+                            </li>
+                        </ul>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </article>
+
+</body>
+
+</html>

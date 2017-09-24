@@ -1,0 +1,36 @@
+const login = {
+  // 是否登录
+  // isLogin: JSON.parse(localStorage.getItem('user')) ? true : false,
+  // 当前用户信息
+  // user: JSON.parse(localStorage.getItem('user')),
+  // 退出登录
+  logout: function() {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    var exp = new Date();
+    exp.setTime(exp.getTime() + (-1 * 24 * 60 * 60 * 1000));
+    document.cookie = 'sspai_jwt_token=; expires=' + exp.toGMTString();
+    $vm.isLogin = false;
+    window.location.href = "https://sspai.com";
+  },
+  updateUserCache: function(user, remember) {
+    var oldUser = JSON.parse(localStorage.getItem('user')) || {};
+    // let oldToken = localStorage.getItem('token');
+    /* user = this.transformUser(Object.assign(oldUser, user, remember ? {
+      remember: remember,
+    } : {})); */
+    user = Object.assign(oldUser, user, remember ? {
+      remember: remember,
+    } : {});
+    // window.$lf.auth.user = user;
+    localStorage.setItem('user', JSON.stringify(user));
+    return user;
+  },
+  updateTokenCache(token) {
+    // window.$lf.auth.token = token || '';
+    localStorage.setItem('token', token || '');
+    document.cookie = 'sspai_jwt_token=' + token;
+    return token;
+  },
+};
+Vue.prototype.$login = login;
